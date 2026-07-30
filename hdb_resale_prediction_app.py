@@ -1,20 +1,22 @@
-# HDB Resale Price Prediction Streamlit App
-# Takes in flat details and predicts resale price using the trained model
-
+## HDB Resale Price Prediction Streamlit App
+## This app collects housing details from the user and predicts the resale price using a trained machine learning model.
+## Import the required libraries for loading the model and building the app interface.
 import joblib
 import streamlit as st
 import pandas as pd
 
-## page setup, no icon since i didn't want an emoji showing in the tab
+## Configure the page. This must be the first Streamlit command in the script.
 st.set_page_config(
     page_title="HDB Resale Price Estimator",
     layout="wide"
 )
 
-## custom css for the dark theme, just hardcoding the hex codes instead of using css variables since it's easier to follow
-## bg #14171C, panels #1C2029, accent orange #F17B33, text #F4F1E9
+## Inject custom CSS for a distinctive look based on real HDB visual language: a dark charcoal background and a "block number signplate" style for the headline prediction figure. No external font is loaded here, since that would require the browser to reach out to an external link - instead this uses fonts that are already built into every browser/operating system.
 st.markdown("""
 <style>
+
+/* All colors below are written directly as hex codes rather than CSS variables, so every rule is self-contained and easy to read on its own. 
+Background: #14171C (charcoal). Panels/cards: #1C2029. Price box: #2B2438 (deep plum). Accent: #F17B33 (orange), used for borders and the button. Text: #F4F1E9 (warm off-white). */
 
 .stApp {
     background-color: #14171C;
@@ -43,7 +45,7 @@ section[data-testid="stSidebar"] * {
     color: #F4F1E9 !important;
 }
 
-## title box at the top
+/* The hero section that introduces the app. Uses a background panel and larger type to feel prominent, but deliberately has no border this time, since the boxed/bordered look was flagged as too busy earlier. */
 .hero-panel {
     background-color: #1C2029;
     border-radius: 6px;
@@ -63,7 +65,7 @@ section[data-testid="stSidebar"] * {
     color: #C7CBD4;
 }
 
-## box showing the predicted price, same bg color as the title box above
+/* The box that displays the estimated price. Uses the same background color as the hero panel above, so the two feel like one consistent dark theme rather than two different shades of dark. */
 .block-plate {
     background-color: #1C2029;
     border-radius: 4px;
@@ -118,6 +120,7 @@ div.stButton > button {
     padding: 0.6rem 1.2rem;
     width: 100%;
 }
+/* Hover uses a darker shade of the same orange instead of white, so the button does not flash bright on a dark background. */
 div.stButton > button:hover {
     background-color: #C85F22;
     color: #FFFFFF;
@@ -127,22 +130,36 @@ div.stButton > button:hover {
     color: #F4F1E9 !important;
 }
 
-div[data-testid="stAlert"] {
+/* Streamlit's default success/warning/error boxes are green/yellow/red, which clash with the dark theme and look too much like a default AI-app template. This overrides all of them to the same dark panel style with a thin orange left edge, so they stay consistent no matter which type of message is shown. Several selector variants are included, since the internal element names for this component have changed across Streamlit versions - only one of these needs to match for the override to work. */
+div[data-testid="stAlert"],
+div[data-testid="stNotification"],
+div[data-baseweb="notification"],
+.stAlert,
+[class*="stAlert"] {
     background-color: #1C2029 !important;
+    background: #1C2029 !important;
     border: none !important;
     border-left: 3px solid #F17B33 !important;
     border-radius: 0 !important;
 }
-div[data-testid="stAlert"] * {
+div[data-testid="stAlert"] *,
+div[data-testid="stNotification"] *,
+div[data-baseweb="notification"] *,
+.stAlert *,
+[class*="stAlert"] * {
     background-color: transparent !important;
     color: #F4F1E9 !important;
 }
-div[data-testid="stAlert"] svg {
+/* The success/warning/error icons are SVGs that were still showing green/yellow/red on their own, separate from the box background above. This forces every alert icon to the same orange accent. */
+div[data-testid="stAlert"] svg,
+div[data-testid="stNotification"] svg,
+div[data-baseweb="notification"] svg,
+.stAlert svg {
     fill: #F17B33 !important;
     color: #F17B33 !important;
 }
 
-## hiding streamlit's default menu/footer/header links
+/* Streamlit adds its own links automatically: a small chain-link icon next to every heading (for jumping to that section), plus a hamburger menu and footer with links to Streamlit's own site/docs/GitHub. All of that is hidden here so no clickable links appear anywhere in the app. */
 #MainMenu {
     visibility: hidden;
 }
@@ -162,9 +179,10 @@ a {
 }
 </style>
 """, unsafe_allow_html=True)
-## unsafe_allow_html allows raw HTML/CSS injection so Streamlit can apply the custom styling defined above (hiding the default menu/footer/header links and disabling link interaction).
 
-## loading the model, cached so it doesn't reload on every rerun
+## Load the trained machine learning model.
+## Cached so the model file is only read from disk once per session, not on every rerun.
+## Stop the app immediately if the model file is missing.
 @st.cache_resource
 def load_model():
     return joblib.load("hdb_final_model.pkl")
@@ -175,10 +193,12 @@ except FileNotFoundError:
     st.error("The trained prediction model could not be found. Please ensure 'hdb_final_model.pkl' is in the same folder as this application.")
     st.stop()
 except Exception as e:
+    ## Catch anything else that goes wrong while loading the model
+    ## (e.g. a corrupted file or a version mismatch) so the app fails gracefully.
     st.error(f"The prediction model could not be loaded due to an unexpected error: {e}")
     st.stop()
 
-## dropdown/slider options
+## Define the categorical options shown in the dropdowns and sliders.
 regions = ["Central", "East", "North", "North-East", "West"]
 
 flat_types = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM", "EXECUTIVE", "MULTI-GENERATION"]
@@ -197,7 +217,7 @@ flat_models = [
     "Standard", "Terrace", "Type S1", "Type S2"
 ]
 
-## town to region mapping, needed since the model was trained on region not town
+## Map each town to the broader region expected by the trained model.
 region_dict = {
     "ANG MO KIO": "North-East", "BEDOK": "East", "BISHAN": "Central",
     "BUKIT BATOK": "West", "BUKIT MERAH": "Central", "BUKIT PANJANG": "West",
@@ -210,9 +230,10 @@ region_dict = {
     "WOODLANDS": "North", "YISHUN": "North"
 }
 
+## Create a sorted list of town names for the dropdown menu.
 towns = sorted(region_dict.keys())
 
-## rough floor area ranges per flat type, used to flag weird combos these are approximate, not hard limits from the model
+## Typical floor area range (sqm) for each flat type, used only for input validation. These are approximate real-world ranges, not hard model limits, so an out-of-range combination is flagged as a warning rather than blocked.
 typical_floor_area = {
     "1 ROOM": (28, 45),
     "2 ROOM": (35, 50),
@@ -223,7 +244,7 @@ typical_floor_area = {
     "MULTI-GENERATION": (140, 175)
 }
 
-## title section
+## Build the main page hero section with a background panel
 st.markdown("""
 <div class="hero-panel">
     <div class="hero-title">HDB Resale Price Estimator</div>
@@ -231,7 +252,8 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-## placeholder box for the price, gets filled in after prediction
+
+## Placeholder container for the price display "plate" shown in the main area
 plate_placeholder = st.empty()
 plate_placeholder.markdown("""
 <div class="block-plate">
@@ -242,7 +264,8 @@ plate_placeholder.markdown("""
 
 st.divider()
 
-## inputs go in the sidebar so the main area is free for the result
+## Gather the user's property details using input widgets in the sidebar.
+## Keeping inputs in the sidebar leaves the main area free for the result.
 with st.sidebar:
     st.header("Property Details")
     town_selected = st.selectbox("Town", towns)
@@ -253,9 +276,11 @@ with st.sidebar:
     lease_commence_selected = st.slider("Lease Commence Year", 1966, 2022, 2000)
     predict_clicked = st.button("Predict HDB Price")
 
+## Running the prediction workflow when the user clicks the button.
 if predict_clicked:
 
-    ## warn if the floor area looks off for the selected flat type doesn't give no output, just gives a heads up to the user that the predicted value might be inaccurate
+    ## Input validation: flag unusual flat type / floor area combinations.
+    ## This does not block the prediction, since the model can still produce an output, but it warns the user that the combination is atypical and the estimate may be less reliable as a result.
     low, high = typical_floor_area[flat_type_selected]
     if not (low <= floor_area_selected <= high):
         st.warning(
@@ -267,13 +292,14 @@ if predict_clicked:
     with st.spinner("Generating prediction..."):
 
         try:
-            ## numerical features
+            ## Creating a dictionary with the numerical input features.
             input_row = {
                 "floor_area_sqm": floor_area_selected,
                 "lease_commence_date": lease_commence_selected
             }
 
-            ## one-hot encode all of the non-numeric values, start at 0 then flip the selected one to 1
+            ## Creating one-hot encoded features for every categorical option.
+            ## All values start at 0 and the selected choice is changed to 1.
             for r in regions:
                 input_row["region_" + r] = 0
             for ft in flat_types:
@@ -283,25 +309,30 @@ if predict_clicked:
             for sr in storey_ranges:
                 input_row["storey_range_" + sr] = 0
 
+            ## Converting the selected town into its mapped region for prediction.
             region_selected = region_dict[town_selected]
 
+            ## Setting the chosen categories to 1 so the model receives the expected input format.
             input_row["region_" + region_selected] = 1
             input_row["flat_type_" + flat_type_selected] = 1
             input_row["flat_model_" + flat_model_selected] = 1
             input_row["storey_range_" + storey_range_selected] = 1
 
+            ## Converting the completed input dictionary into a DataFrame for the model.
             df_input = pd.DataFrame([input_row])
 
+            ## Generating the resale price prediction.
             prediction = model.predict(df_input)[0]
 
         except Exception as e:
+            ## Catch any failure during feature preparation or prediction (e.g. a feature mismatch) and show a clear, user-facing message instead of letting the app crash.
             st.error(
                 "Something went wrong while generating the prediction. "
                 f"Details: {e}"
             )
             st.stop()
 
-    ## update the price box with the actual prediction
+    ## Fill in the block signplate with the actual predicted price.
     plate_placeholder.markdown(f"""
     <div class="block-plate">
         <div class="plate-label">Estimated Resale Price</div>
@@ -311,23 +342,34 @@ if predict_clicked:
 
     st.success("Prediction generated successfully.")
 
+    ## Show the price per square metre as an extra, easy-to-scan data point.
     price_per_sqm = prediction / floor_area_selected
     st.metric("Estimated Price per sqm", f"${price_per_sqm:,.0f}")
 
     st.divider()
     st.subheader("Prediction Summary")
 
-    ## showing the inputs as cards, split across 2 columns
+    ## Displaying the selected inputs as cards, in two columns for easier reading.
+    ## Each st.markdown call below renders one "summary-card" div styled in
+    ## the CSS block earlier, with a small label on top and the value below it.
     c1, c2 = st.columns(2)
     with c1:
+        ## Town card
         st.markdown(f'<div class="summary-card"><div class="label">Town</div><div class="value">{town_selected}</div></div>', unsafe_allow_html=True)
+        ## Region card, derived from the town via region_dict
         st.markdown(f'<div class="summary-card"><div class="label">Region</div><div class="value">{region_selected}</div></div>', unsafe_allow_html=True)
+        ## Flat type card
         st.markdown(f'<div class="summary-card"><div class="label">Flat Type</div><div class="value">{flat_type_selected}</div></div>', unsafe_allow_html=True)
+        ## Storey range card
         st.markdown(f'<div class="summary-card"><div class="label">Storey Range</div><div class="value">{storey_range_selected}</div></div>', unsafe_allow_html=True)
     with c2:
+        ## Flat model card
         st.markdown(f'<div class="summary-card"><div class="label">Flat Model</div><div class="value">{flat_model_selected}</div></div>', unsafe_allow_html=True)
+        ## Floor area card
         st.markdown(f'<div class="summary-card"><div class="label">Floor Area</div><div class="value">{floor_area_selected} sqm</div></div>', unsafe_allow_html=True)
+        ## Lease commence year card
         st.markdown(f'<div class="summary-card"><div class="label">Lease Commence Year</div><div class="value">{lease_commence_selected}</div></div>', unsafe_allow_html=True)
 
     st.divider()
+    ## Add a disclaimer so users understand the prediction is only an estimate.
     st.caption("Disclaimer: The predicted resale price is an estimate generated using a machine learning model and should not be treated as an official property valuation.")
